@@ -48,4 +48,11 @@ class AdminAccessTest extends TestCase
     {
         $this->get('/')->assertRedirect('/dashboard');
     }
+
+    public function test_guests_cannot_access_crm_pages(): void
+    {
+        foreach (['/companies', '/companies/create', '/employees', '/employees/create'] as $url) {
+            $this->get($url)->assertRedirect(route('login'));
+        }
+    }
 }
