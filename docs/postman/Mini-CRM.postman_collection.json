@@ -1,0 +1,221 @@
+{
+    "info": {
+        "name": "Mini CRM API",
+        "description": "Token-authenticated REST API for the Mini CRM (Laravel Sanctum).\n\n1. Run **Auth → Issue token** first — the test script saves the token into the `token` collection variable.\n2. Every other request sends `Authorization: Bearer {{token}}` automatically.\n\nDefault credentials come from the database seeder: admin@admin.com / password.",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "auth": {
+        "type": "bearer",
+        "bearer": [
+            {
+                "key": "token",
+                "value": "{{token}}",
+                "type": "string"
+            }
+        ]
+    },
+    "variable": [
+        {
+            "key": "base_url",
+            "value": "http://localhost:8000"
+        },
+        {
+            "key": "token",
+            "value": ""
+        },
+        {
+            "key": "company_id",
+            "value": "1"
+        }
+    ],
+    "item": [
+        {
+            "name": "1. Auth",
+            "item": [
+                {
+                    "name": "Issue token",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Token issued', () => pm.response.to.have.status(201));",
+                                    "const body = pm.response.json();",
+                                    "pm.collectionVariables.set('token', body.access_token);"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"admin@admin.com\",\n    \"password\": \"password\",\n    \"device_name\": \"postman\"\n}"
+                        },
+                        "url": "{{base_url}}/api/v1/auth/token"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "2. Companies",
+            "item": [
+                {
+                    "name": "Get company with employees",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                                    "const company = pm.response.json().data;",
+                                    "pm.test('Has employee_count attribute', () => pm.expect(company).to.have.property('employee_count'));",
+                                    "pm.test('employee_count matches employees list', () => pm.expect(company.employee_count).to.eql(company.employees.length));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": "{{base_url}}/api/v1/companies/{{company_id}}"
+                    }
+                },
+                {
+                    "name": "List companies (paginated)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/v1/companies?page=1&per_page=10&search=",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "v1", "companies"],
+                            "query": [
+                                {
+                                    "key": "page",
+                                    "value": "1"
+                                },
+                                {
+                                    "key": "per_page",
+                                    "value": "10",
+                                    "description": "1–100, default 10"
+                                },
+                                {
+                                    "key": "search",
+                                    "value": "",
+                                    "description": "Filter by name, email or website"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Company not found (404)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 404', () => pm.response.to.have.status(404));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": "{{base_url}}/api/v1/companies/999999"
+                    }
+                },
+                {
+                    "name": "Without token (401)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 401', () => pm.response.to.have.status(401));"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "noauth"
+                        },
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": "{{base_url}}/api/v1/companies/{{company_id}}"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "3. Sign out",
+            "item": [
+                {
+                    "name": "Revoke token",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Token revoked', () => pm.response.to.have.status(204));",
+                                    "pm.collectionVariables.set('token', '');"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Accept",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": "{{base_url}}/api/v1/auth/token"
+                    }
+                }
+            ]
+        }
+    ]
+}
